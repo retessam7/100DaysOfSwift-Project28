@@ -4,7 +4,7 @@
 //
 //  Created by Aleksei Ivanov on 13/3/25.
 //
-
+import LocalAuthentication
 import UIKit
 
 class ViewController: UIViewController {
@@ -44,7 +44,34 @@ class ViewController: UIViewController {
     }
     
     @IBAction func authenticateTapped(_ sender: Any) {
-        unlockSecretMessage()
+        let context = LAContext()
+        var error: NSError?
+        
+        // Check whether the device is capable of supporting biometric authentication
+        // &error – Objective-C’s equivalent of inout – it means “if you hit an error, here’s the place in memory where you should store that error so I can read it.” - called a pointer
+        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
+            let reason = "Identify your self!"
+            // The biometry system begin a check now, giving it a string containing the reason why we're asking
+            // for Face ID the string is written into our Info.plist file
+            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) {
+                [weak self] success, authenticationError in
+                
+                // Touch ID/Face ID was successful or not, it might not be on the main thread
+                DispatchQueue.main.async {
+                    if success {
+                        self?.unlockSecretMessage()
+                    } else {
+                        let ac = UIAlertController(title: "Authentication failed", message: "You could not be verified; please try again.", preferredStyle: .alert)
+                        ac.addAction(UIAlertAction(title: "OK", style: .default))
+                        self?.present(ac, animated: true)
+                    }
+                }
+            }
+        } else {
+            let ac = UIAlertController(title: "Biometry unavailable", message: "Your device is not configured for biometric authentication.", preferredStyle: .alert)
+            ac.addAction(UIAlertAction(title: "OK", style: .default))
+            self.present(ac, animated: true)
+        }
     }
     
     // needs to show the text view, then load the keychain's text into it
